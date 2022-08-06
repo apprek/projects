@@ -1,0 +1,43 @@
+policies:
+  - name: s3-set_default_encryption
+    description: |
+      Encrypt new, unencrypted S3 buckets with default SSE-S3 encryption
+    resource: s3
+    mode:
+      type: cloudtrail
+      events:
+        - CreateBucket
+      role: arn:aws:iam::{account_id}:role/CloudCustodian-Remediations
+      timeout: 300
+      runtime: python3.8
+      member-role: arn:aws:iam::{account_id}:role/CloudCustodian-Remediations
+      tags:
+        Company: corp_xyz
+        Owner: cloudinfrastructure
+        OwnerContact: cloud-infrastructure@corp_xyz.com
+        Product: cloudcustodian
+      execution-options:
+        log_group: cloud-custodian
+        output_dir: s3://bucket/cloud-custodian/{account_id}/{region}
+        metrics: aws
+    filters:
+      - type: bucket-encryption
+        state: false
+    actions:
+      - type: set-bucket-encryption
+        crypto: AES256
+        enabled: true
+      - type: notify
+        to:
+          - event-user
+          - resource-creator
+        owner_absent_contact:
+          - cloud-infrastructure@corp_xyz.com
+        template: default.html
+        subject: "[custodian {{ account }} {{ region }}] S3 Default Encryption Enabled"
+        violation_desc: "The following S3 buckets were created without default encryption:"
+        action_desc: "Default encryption has been enabled for these clusters."
+        transport:
+          type: sqs
+          region: us-east-1
+          queue: https://sqs.us-east-1.amazonaws.com/{account}/CloudCustodian-Mailer

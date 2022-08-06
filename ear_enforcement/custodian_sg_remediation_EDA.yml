@@ -1,0 +1,51 @@
+policies:
+  - name: custodian_sg_remediation_EDA
+    resource: security-group
+    mode:
+      type: cloudtrail
+      events:
+        - source: ec2.amazonaws.com
+          event: AuthorizeSecurityGroupIngress
+          ids: "requestParameters.groupId"
+      role: arn:aws:iam::{central_management_account}:role/custodian_sg_remediation_role
+      tags:
+        Application: Custodian
+        CreatedBy: CloudCustodian
+      execution-options:
+        region: {region} 
+        account_id: {account_id}
+        output_dir: s3://bucket
+    comment: |
+          Once triggered by a CWE of a CloudTrail of an new SG rule, The SG rule should be examined by this 
+          C7N script. If the rule is ingress based and for port 80 or 443 and has a source from 0.0.0.0/0 then it should be
+          allowed. Otherwise it is not from 80 or 443 will not be able to use 0.0.0.0/0 and will be dropped 
+    filters:
+      - type: ingress
+        OnlyPorts: [80, 443]
+        Cidr:
+          value: "0.0.0.0/0"
+      - type: ingress
+        OnlyPorts: [80, 443]
+        CidrV6:
+          value: "::/0"
+    actions:
+      - type: remove-permissions
+        ingress: matched
+      - type: notify
+        template: default.html
+        priority_header: 1
+        subject: "Open Security Group Rule Created-[custodian {{ account }} - {{ region }}]"
+        violation_desc: "Security Group(s) Which Had Rules Open To The World:"
+        action_desc: |
+            "Actions Taken:  The Violating Security Group Rule Has Been Removed As It Typically
+            Allows Direct Incoming Public Internet Traffic Access To Your Resource Which Violates Our
+            Company's Cloud Security Policy.  Please Refer To Our Company's Cloud Security Best
+            Practices Documentation.  If This Ingress Rule Is Required You May Contact The Security
+            Team To Request An Exception."
+        to:
+            - CloudCustodian@corp_xyz.com
+            - event-owner
+        transport:
+            type: sqs
+            queue: https://sqs.us-east-1.amazonaws.com/{account}/cloud-custodian-mailer
+            region: us-east-1

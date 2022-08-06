@@ -1,0 +1,110 @@
+vars:
+  create-queue-mode: &create-queue-mode
+    type: cloudtrail
+    # Note: Use {account_id} here instead of an explicit account
+    # ID. When the policy is provisioned, Cloud Custodian will
+    # replace it using the active AWS credentials.
+    events:
+      - source: sqs.amazonaws.com
+        event: CreateQueue
+        ids: "responseElements.queueUrl"
+    role: arn:aws:iam::{account_id}:role/CloudCustodian-Remediations
+    timeout: 300
+    runtime: python3.8
+    member-role: arn:aws:iam::{account_id}:role/CloudCustodian-Remediations
+    tags: &lambda-tags
+      Company: corp_xyz
+      Owner: cloudinfrastructure
+      OwnerContact: cloud-infrastructure@corp_xyz.com
+      Product: cloudcustodian
+    execution-options:
+      log_group: cloud-custodian
+      output_dir: s3://bucket/cloud-custodian/{account_id}/{region}
+      metrics: aws
+
+policies:
+  - name: sqs-set_default_encryption
+    description: |
+      Set encryption to use the AWS-managed "aws/sqs" key, for queues created
+      with:
+
+      - No encryption specified
+      - An empty queue policy
+    resource: sqs
+    mode:
+      <<: *create-queue-mode
+    filters:
+      - KmsMasterKeyId: absent
+      - type: value
+        key: CreatedTimestamp
+        value_type: age
+        value: 1
+        op: lt
+    actions:
+      - type: set-encryption
+        key: aws/sqs
+      - type: notify
+        to:
+          - event-user
+          - resource-creator
+        owner_absent_contact:
+          - admin@corp_xyz.com
+        template: default.html
+        subject: "[custodian {{ account }} {{ region }}] SQS Queue Encryption Enabled"
+        violation_desc: "The following SQS queues were created unencrypted:"
+        action_desc: "Encryption has been enabled for these queues."
+        transport:
+          type: sqs
+          region: us-east-1
+          queue: https://sqs.us-east-1.amazonaws.com/{account}/CloudCustodian-Mailer
+
+
+  - name: sqs-set_custom_encryption
+    description: |
+      Recommend encryption with the customer-managed "sqs" key for queues created
+      with:
+
+      - No encryption specified
+      - A populated queue policy
+    resource: sqs
+    mode:
+      <<: *create-queue-mode
+    filters:
+      - KmsMasterKeyId: absent
+      - type: value
+        key: CreatedTimestamp
+        value_type: age
+        value: 1
+        op: lt
+      - Policy: present
+    actions:
+      - type: post-finding
+        description: |
+          SQS queues with a queue policy cannot be reliably encrypted using
+          the AWS-managed "aws/sqs" KMS key. If this queue requires service
+          integrations such as CloudWatch Events, S3 or SNS, consider using
+          the managed "sqs" key.
+          
+          Note that using the customer-managed "sqs" key requires consumer IAM
+          roles to add "kms:Decrypt" and "kms:GenerateDataKey*" permissions for
+          that key.
+        compliance_status: FAILED
+        recommendation: "Encrypt queue, adjust consumer IAM roles as needed"
+        types:
+          - "Software and Configuration Checks"
+      - type: notify
+        to:
+          - event-user
+          - resource-creator
+        owner_absent_contact:
+          - admin@corp_xyz.com
+        template: default.html
+        subject: "[custodian {{ account }} {{ region }}] SQS Queue Encryption Recommended"
+        violation_desc: "The following SQS queues were created unencrypted:"
+        action_desc: |
+          No action taken due to an existing queue policy. Encryption with the customer-managed
+          "sqs" key recommended.
+        transport:
+          type: sqs
+          region: us-east-1
+          queue: https://sqs.us-east-1.amazonaws.com/{account}/CloudCustodian-Mailer

@@ -1,0 +1,38 @@
+policies:
+  - name: kinesis-set_default_encryption
+    description: |
+      Encrypt unencrypted Kinesis streams with the default service key
+    resource: kinesis
+    mode:
+      type: cloudtrail
+      role: arn:aws:iam::{account_id}:role/CloudCustodian-Remediations
+      events:
+        - source: kinesis.amazonaws.com
+          ids: requestParameters.streamName
+          event: CreateStream
+      timeout: 300
+      runtime: python3.8
+      member-role: arn:aws:iam::{account_id}:role/CloudCustodian-Remediations
+      execution-options:
+        log_group: cloud-custodian
+        output_dir: s3://bucket/cloud-custodian/{account_id}/{region}
+        metrics: aws
+    filters:
+      - KeyId: absent
+    actions:
+      - type: encrypt
+        key: 'aws/kinesis'
+      - type: notify
+        to:
+          - event-user
+          - resource-creator
+        owner_absent_contact:
+          - admin@corp_xyz.com
+        template: default.html
+        subject: "[custodian {{ account }} {{ region }}] Kinesis Streams Encrypted"
+        violation_desc: "The following Kinesis streams were launched unencrypted:"
+        action_desc: "Encryption has been enabled for these streams."
+        transport:
+          type: sqs
+          region: us-east-1
+          queue: https://sqs.us-east-1.amazonaws.com/{account}/CloudCustodian-Mailer

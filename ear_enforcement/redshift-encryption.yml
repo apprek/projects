@@ -1,0 +1,43 @@
+policies:
+  - name: redshift-set_encryption
+    description: |
+      Update unencrypted Redshift clusters to use the default service key.
+    resource: redshift
+    mode:
+      type: cloudtrail
+      events:
+        - CreateCluster
+      role: arn:aws:iam::{account_id}:role/CloudCustodian-Remediations
+      timeout: 300
+      runtime: python3.8
+      member-role: arn:aws:iam::{account_id}:role/CloudCustodian-Remediations
+      tags: &lambda-tags
+        Company: corp_xyz
+        Owner: cloudinfrastructure
+        OwnerContact: cloud-infrastructure@corp_xyz.com
+        Product: cloudcustodian
+      execution-options:
+        log_group: cloud-custodian
+        output_dir: s3://bucket/cloud-custodian/{account_id}/{region}
+        metrics: aws
+    filters:
+      - Encrypted: False
+    actions:
+      - type: set-attributes
+        attributes:
+          Encrypted: true
+          KmsKeyId: alias/aws/redshift
+      - type: notify
+        to:
+          - event-user
+          - resource-creator
+        owner_absent_contact:
+          - adminn@corp_xyz.com
+        template: default.html
+        subject: "[custodian {{ account }} {{ region }}] Redshift Clusters Encrypted"
+        violation_desc: "The following Redshift clusters were launched unencrypted:"
+        action_desc: "Encryption has been enabled for these clusters."
+        transport:
+          type: sqs
+          region: us-east-1
+          queue: https://sqs.us-east-1.amazonaws.com/{account}/CloudCustodian-Mailer

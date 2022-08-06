@@ -1,0 +1,47 @@
+policies:
+  - name: dyanamodb_encryption_remediation
+    description: |
+      Delete DyanamoDB at creation time if launched unencrypted.
+    resource: dynamodb-table
+    mode:
+      type: cloudtrail
+      events:
+        - source: dynamodb.amazonaws.com
+          event: CreateTable
+          ids: responseElements.fileSystemId
+      role: arn:aws:iam::{account_id}:role/CloudCustodian-Remediations
+      timeout: 300
+      runtime: python3.8
+      member-role: arn:aws:iam::{account_id}:role/CloudCustodian-Remediations
+      tags:
+        Company: corp_xyz
+        Owner: cloudinfrastructure
+        OwnerContact: cloud-infrastructure@corp_xyz.com
+        Product: cloudcustodian
+      execution-options:
+        log_group: cloud-custodian
+        output_dir: s3://bucket/cloud-custodian/{account_id}/{region}
+        metrics: aws
+    filters:
+      - Encrypted: False
+    actions:
+      - type: mark-for-op
+        tag: custodian_ear_remediation
+        msg: "Launched unencrypted: {op}@{action_date}"
+        op: delete
+        days: 0
+      - delete
+      - type: notify
+        to:
+          - event-user
+          - resource-creator
+        owner_absent_contact:
+          - admin@corp_xyz.com
+        template: default.html
+        subject: "[custodian {{ account }} {{ region }}] EFS File Systems Deleted"
+        violation_desc: "The following DynamoDB Table was created unencrypted:"
+        action_desc: "The DynamoDB Table has been deleted."
+        transport:
+          type: sqs
+          region: us-east-1
+          queue: https://sqs.{region}.amazonaws.com/{account}/CloudCustodian-Mailer

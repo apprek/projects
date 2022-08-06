@@ -1,0 +1,46 @@
+policies:
+  - name: rds-encryption_remediation
+    description: |
+      Delete RDS instances created without encryption enabled.
+    resource: rds
+    mode:
+      type: cloudtrail
+      events:
+        - CreateDBInstance
+      role: arn:aws:iam::{account_id}:role/CloudCustodian-Remediations
+      timeout: 300
+      runtime: python3.8
+      member-role: arn:aws:iam::{account_id}:role/CloudCustodian-Remediations
+      tags:
+        Company: corp_xyz
+        Owner: cloudinfrastructure
+        OwnerContact: cloud-infrastructure@corp_xyz.com
+        Product: cloudcustodian
+      execution-options:
+        log_group: cloud-custodian
+        output_dir: s3://bucket/cloud-custodian/{account_id}/{region}
+        metrics: aws
+    filters:
+      - StorageEncrypted: false
+      - "tag:aws:cloudformation:stack-name": absent
+    actions:
+      - type: mark-for-op
+        tag: custodian_ear_remediation
+        msg: "Launched with unencrypted volumes: {op}@{action_date}"
+        op: delete
+        days: 0
+      - delete
+      - type: notify
+        to:
+          - event-user
+          - resource-creator
+        owner_absent_contact:
+          - admin@corp_xyz.com
+        template: default.html
+        subject: "[custodian {{ account }} {{ region }}] RDS Instances Deleted"
+        violation_desc: "The following RDS instances were launched unencrypted:"
+        action_desc: "The instances have been deleted."
+        transport:
+          type: sqs
+          region: us-east-1
+          queue: https://sqs.us-east-1.amazonaws.com/{account}/CloudCustodian-Mailer

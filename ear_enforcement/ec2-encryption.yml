@@ -1,0 +1,59 @@
+policies:
+  - name: ec2-encryption_remediation
+    description: |
+      Terminate EC2 instances launched with unencrypted EBS volumes.
+    resource: ec2
+    mode:
+      type: cloudtrail
+      events:
+        - RunInstances
+      role: arn:aws:iam::{account_id}:role/CloudCustodian-Remediations
+      timeout: 300
+      runtime: python3.8
+      member-role: arn:aws:iam::{account_id}:role/CloudCustodian-Remediations
+      tags:
+        Company: corp_xyz
+        Owner: cloudinfrastructure
+        OwnerContact: cloud-infrastructure@corp_xyz.com
+        Product: cloudcustodian
+      execution-options:
+        log_group: cloud-custodian
+        output_dir: s3://bucket/cloud-custodian/{account_id}/{region}
+        metrics: aws
+    filters:
+      - "tag:aws:autoscaling:groupName": absent
+      - "tag:aws:cloudformation:stack-name": absent
+      - "tag:aws:elasticmapreduce:job-flow-id": absent
+      - type: value
+        key: "tag:Name"
+        op: ne
+        value: "Packer Builder"
+      - not:
+        - type: value
+          key: IamInstanceProfile.Arn
+          op: regex
+          value: '^.*(infrastructure-buildami|windows-cis-ami)$'
+      - type: ebs
+        key: Encrypted
+        value: false
+    actions:
+      - type: mark-for-op
+        tag: custodian_ear_remediation
+        msg: "Launched with unencrypted volumes: {op}@{action_date}"
+        op: terminate
+        days: 0
+      - terminate
+      - type: notify
+        to:
+          - event-user
+          - resource-creator
+        owner_absent_contact:
+          - cloud-infrastructure@corp_xyz.com
+        template: default.html
+        subject: "[custodian {{ account }} {{ region }}] EC2 Instances Terminated"
+        violation_desc: "The following EC2 instances were launched unencrypted:"
+        action_desc: "The instances have been terminated."
+        transport:
+          type: sqs
+          region: us-east-1
+          queue: https://sqs.us-east-1.amazonaws.com/{account}/CloudCustodian-Mailer
