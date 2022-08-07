@@ -22,6 +22,8 @@ Here is how these three modules work in practice for a remote/child account:
 **EaR EventBased Automated Remediation Image**
 ![EaR EventBased Automated Remediation Image](https://drive.google.com/file/d/1-8PlIY61kf2OHyFfhplfZdqRVSr9eIKD/view?usp=sharing)
 
+<img src="https://drive.google.com/file/d/1-8PlIY61kf2OHyFfhplfZdqRVSr9eIKD/view?usp=sharing" alt="Alt text" title="EaR EventBased Automated Remediation Image">
+
 
 
 
