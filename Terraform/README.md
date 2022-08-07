@@ -22,7 +22,7 @@ Here is how these three modules work in practice for a remote/child account:
 **EaR EventBased Automated Remediation Image**
 ![EaR EventBased Automated Remediation Image](https://drive.google.com/file/d/1-8PlIY61kf2OHyFfhplfZdqRVSr9eIKD/view?usp=sharing)
 
-<img src="https://drive.google.com/file/d/1-8PlIY61kf2OHyFfhplfZdqRVSr9eIKD/view?usp=sharing"  title="EaR EventBased Automated Remediation Image">
+<img src="https://github.com/apprek/projects/blob/4145aed9cc9adafaa2b2e4adaa6598be4cfdfb2a/Terraform/EaR_Diagram.pdf"  title="EaR EventBased Automated Remediation Image">
 
 
 
