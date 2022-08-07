@@ -20,7 +20,7 @@ Here is how these three modules work in practice for a remote/child account:
   - The policies are designed to run in the member account using a `CloudCustodian-Remediations` role. Since we've created that role, everything is in place for the central policies to do their job.
 
 
-![EaR EventBased Automated Remediation Image](https://drive.google.com/file/d/1-8PlIY61kf2OHyFfhplfZdqRVSr9eIKD/view?usp=sharing)
+![EaR EventBased Automated Remediation Image(https://drive.google.com/file/d/1-8PlIY61kf2OHyFfhplfZdqRVSr9eIKD/view?usp=sharing)]
 
 
 ![https://drive.google.com/file/d/1-8PlIY61kf2OHyFfhplfZdqRVSr9eIKD/view?usp=sharing]
