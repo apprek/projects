@@ -12,7 +12,7 @@ This collection of Terraform templates helps provision resources that can be ref
 
 Here is how these three modules work in practice for a remote/child account:
 
-- We provision the `remediation_role` module into a remote/child account using Terragrunt/Terraform as described in the [cloud-infrastructure repository](https://github.com/cloud-infrastructure/tree/master/terraform). This creates a `CloudCustodian-Remediations` role in a remote/child account.
+- We provision the `remediation_role` module into a remote/child account using Terragrunt/Terraform as described in the [Terraform repository](https://github.com/apprek/projects/tree/main/Terraform). This creates a `CloudCustodian-Remediations` role in a remote/child account.
 - We provision the `Event IAM Role` module into a remote/child account using Terragrunt/Terraform as described in the previous link above. This creates a `CloudCustodian-EventForwarder` role in a remote/child account.
 - We provision the `event_bus_forwarder` module which creates an EventBridge Rule named `custodian-eventbus-forwarder`. This rule is configured to begin forwarding selected CloudTrail events to the event bus in the central management/parent account. 
 - Cloud Custodian policies like those in `./security/ear_enforcement` are _already_ running in central management/parent account.
@@ -39,7 +39,7 @@ Here is how these three modules work in practice for a remote/child account:
 ### Terraform setup for Event Driven EaR 
 
 1.	Pull down “cloud-custodian-policies” from GITHub repo
-  -	https://github.com/corp_xyz/cloud-custodian-policies
+  -	https://github.com/apprek/projects/tree/main/ear_enforcement 
 2.	Log into remote AWS account that needs that needs the IAM Roles and Event rules setup 
 3.	Confirm that there is a IAM Role named “infrastructure-terraform” set up. If not you will need to set up the role in the following manner.
   -	Trust relationship with the  {central management/parent account} 

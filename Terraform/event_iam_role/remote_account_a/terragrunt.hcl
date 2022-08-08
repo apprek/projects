@@ -3,7 +3,7 @@ include {
 }
 
 terraform {
-  source = "/Users/kapprey/code/cloud-custodian-policies/terraform/modules/event_iam_role"
+  source = "../../modules/event_iam_role"
 }
 
 inputs = {
